@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+int f(int x) {
+    if (x == 0) {
+        while(1);
+    } else if (x > 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int g(int x) {
+    if (x == 0) {
+        return 0;
+    } else if (x > 0) {
+        while(1);
+    } else {
+        return 1;
+    }
+}
+
+int main() {
+    int x;
+    printf("Введіть значення x: ");
+    scanf("%d", &x);
+    
+    int pipe_f[2], pipe_g[2];
+    pipe(pipe_f);
+    pipe(pipe_g);
+    
+    pid_t pid_f, pid_g;
+    
+    pid_f = fork();
+    if (pid_f == 0) {
+        close(pipe_f[0]);
+        int result_f = f(x);
+        write(pipe_f[1], &result_f, sizeof(result_f));
+        close(pipe_f[1]);
+        exit(0);
+    }
+    
+    pid_g = fork();
+    if (pid_g == 0) {
+        close(pipe_g[0]);
+        int result_g = g(x);
+        write(pipe_g[1], &result_g, sizeof(result_g));
+        close(pipe_g[1]);
+        exit(0);
+    }
+    
+    close(pipe_f[1]);
+    close(pipe_g[1]);
+    
+    int result_f, result_g;
+    read(pipe_f[0], &result_f, sizeof(result_f));
+    read(pipe_g[0], &result_g, sizeof(result_g));
+    close(pipe_f[0]);
+    close(pipe_g[0]);
+    
+    int result = result_f || result_g;
+    
+    printf("Результат f(x) || g(x): %d\n", result);
+    
+    wait(NULL);
+    wait(NULL);
+    
+    return 0;
+}
